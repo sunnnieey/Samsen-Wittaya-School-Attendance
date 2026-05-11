@@ -8,27 +8,22 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
       body { font-family: 'Sarabun', sans-serif; text-align: center; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
-      .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); max-width: 350px; width: 100%; text-align: center; }
+      .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); max-width: 350px; width: 100%; }
       .profile-pic { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #00c300; display: none; margin: 0 auto 15px auto; }
-      input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; background: #fafafa;}
-      button { background-color: #00c300; color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 10px; width: 100%; cursor: pointer; margin-top: 15px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,195,0,0.2); }
-      button:hover { background-color: #009900; }
+      input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; }
+      button { background-color: #00c300; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 10px; width: 100%; cursor: pointer; margin-top: 15px; font-weight: bold; }
       .hidden { display: none; }
       #loading { color: #ff9800; font-weight: bold; margin-bottom: 15px; }
-      h2 { color: #333; margin-top: 0; font-size: 24px; }
-      h3 { font-size: 20px; margin-bottom: 10px; }
-      p { color: #666; font-size: 14px; margin-top: 5px; }
     </style>
   </head>
   <body>
     <div class="container">
       <img id="profileImage" class="profile-pic" src="" alt="Profile">
       <h2>Samsen App 🏫</h2>
-      
       <div id="loading">กำลังเชื่อมต่อระบบ...</div>
 
       <div id="loginForm" class="hidden">
-        <p>กรุณาลงทะเบียนเข้าใช้งานครั้งแรก</p>
+        <p>กรุณาลงทะเบียนครั้งแรก</p>
         <input type="number" id="username" placeholder="เลขที่ (เช่น 15)">
         <input type="password" id="password" placeholder="เลขประจำตัว">
         <button onclick="register()">ลงทะเบียน</button>
@@ -36,38 +31,32 @@
 
       <div id="mainMenu" class="hidden">
         <h3 id="welcomeText" style="color:#0056b3;"></h3>
-        <p>คุณได้ผูกบัญชีเรียบร้อยแล้ว</p>
+        <p>ผูกบัญชีเรียบร้อยแล้ว</p>
         <button style="background-color: #007bff;" onclick="alert('ระบบเช็คชื่อกำลังพัฒนา')">📷 สแกน QR เช็คชื่อ</button>
         <button style="background-color: #17a2b8;" onclick="alert('ระบบคะแนนกำลังพัฒนา')">📊 ดูคะแนน</button>
       </div>
     </div>
 
     <script>
-      // ⚠️ เอา URL ของ Google Apps Script (Web App URL) มาวางแทนที่ตรงนี้ครับ!
-      let webAppUrl = 'https://script.google.com/macros/s/AKfycbxrCBkyGnSTsuXLCr0V3Pvi_sP9K-BeKrTyAl7nBTur_-lvMKAFIj1kkQdESrwY8DFS/exec'; 
+      // ⚠️ สำคัญ: ใส่ URL จาก Google Apps Script ของคุณครูตรงนี้
+      const webAppUrl = 'https://script.google.com/macros/s/AKfycbxrCBkyGnSTsuXLCr0V3Pvi_sP9K-BeKrTyAl7nBTur_-lvMKAFIj1kkQdESrwY8DFS/exec'; 
       let userUid = "";
 
       async function main() {
         try {
-          await liff.init({ liffId: "2010046785-XmnNLcCN" }); // LIFF ID เดิม
-          
+          await liff.init({ liffId: "2010046785-XmnNLcCN" });
           if (!liff.isInClient()) {
-            document.getElementById("loading").innerText = "❌ กรุณาเปิดจากแอป LINE เท่านั้นครับ";
-            document.getElementById("loading").style.color = "red";
+            document.getElementById("loading").innerText = "❌ เปิดจาก LINE เท่านั้น";
             return;
           }
-
-          document.getElementById("loading").innerText = "กำลังดึงข้อมูลนักเรียน...";
           const profile = await liff.getProfile();
           userUid = profile.userId;
-          
           document.getElementById("profileImage").src = profile.pictureUrl;
           document.getElementById("profileImage").style.display = "block";
           
-          // 🛑 เปลี่ยนมาใช้ FETCH ตะโกนคุยข้ามdomain
-          document.getElementById("loading").innerText = "กำลังเช็คสถานะการลงทะเบียน...";
-          let response = await fetch(`${webAppUrl}?action=checkUser&uid=${userUid}`);
-          let result = await response.json(); // รับข้อมูล JSON กลับมา
+          // ใช้ fetch แทน google.script.run
+          const res = await fetch(`${webAppUrl}?action=checkUser&uid=${userUid}`);
+          const result = await res.json();
           
           document.getElementById('loading').classList.add('hidden');
           if (result.status === "registered") {
@@ -76,43 +65,35 @@
           } else {
             document.getElementById('loginForm').classList.remove('hidden');
           }
-
         } catch(err) {
-          document.getElementById("loading").innerText = "เกิดข้อผิดพลาด: " + err.message;
-          document.getElementById("loading").style.color = "red";
+          document.getElementById("loading").innerText = "Error: " + err.message;
         }
       }
 
       async function register() {
         const user = document.getElementById('username').value;
         const pass = document.getElementById('password').value;
-        if (!user || !pass) { alert("กรุณากรอกข้อมูลให้ครบ!"); return; }
+        if (!user || !pass) { alert("กรุณากรอกข้อมูล!"); return; }
         
-        document.getElementById('loading').innerText = "กำลังบันทึกข้อมูล...";
         document.getElementById('loading').classList.remove('hidden');
         document.getElementById('loginForm').classList.add('hidden');
         
-        // 🛑 เปลี่ยนมาใช้ FETCH ตะโกนคุยข้ามdomain
         try {
-          let response = await fetch(`${webAppUrl}?action=registerUser&uid=${userUid}&user=${user}&pass=${pass}`);
-          let res = await response.json();
-          
+          const res = await fetch(`${webAppUrl}?action=registerUser&uid=${userUid}&user=${user}&pass=${pass}`);
+          const result = await res.json();
           document.getElementById('loading').classList.add('hidden');
-          if (res.success) {
-            alert(res.message);
-            document.getElementById('welcomeText').innerText = "สวัสดี " + res.name;
+          if (result.success) {
+            alert(result.message);
+            document.getElementById('welcomeText').innerText = "สวัสดี " + result.name;
             document.getElementById('mainMenu').classList.remove('hidden');
           } else {
-            alert(res.message);
+            alert(result.message);
             document.getElementById('loginForm').classList.remove('hidden');
           }
         } catch(err) {
-          document.getElementById('loading').classList.add('hidden');
-          document.getElementById('loginForm').classList.remove('hidden');
-          alert("ลงทะเบียนล้มเหลว: " + err.message);
+          alert("ลงทะเบียนไม่สำเร็จ: " + err.message);
         }
       }
-
       main();
     </script>
   </body>
