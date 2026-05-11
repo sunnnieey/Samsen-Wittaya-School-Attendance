@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Samsen App</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body { font-family: 'Sarabun', sans-serif; text-align: center; background-color: #f4f7f6; padding: 20px; }
+      .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+      .profile-pic { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #00c300; display: none; margin: 0 auto 15px auto; }
+      input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+      button { background-color: #00c300; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; width: 100%; cursor: pointer; margin-top: 10px; font-weight: bold;}
+      .hidden { display: none; }
+      #loading { color: #ff9800; font-weight: bold; margin-bottom: 15px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img id="profileImage" class="profile-pic" src="" alt="Profile">
+      <h2>Samsen App 🏫</h2>
+      
+      <div id="loading">กำลังเชื่อมต่อระบบ...</div>
+
+      <div id="loginForm" class="hidden">
+        <p>กรุณาลงทะเบียนเข้าใช้งานครั้งแรก</p>
+        <input type="number" id="username" placeholder="เลขที่ (เช่น 15)">
+        <input type="password" id="password" placeholder="เลขประจำตัว">
+        <button onclick="register()">ลงทะเบียน</button>
+      </div>
+
+      <div id="mainMenu" class="hidden">
+        <h3 id="welcomeText" style="color:#0056b3;"></h3>
+        <p>คุณได้ผูกบัญชีเรียบร้อยแล้ว</p>
+        <button style="background-color: #007bff;" onclick="alert('ระบบเช็คชื่อกำลังพัฒนา')">📷 สแกน QR เช็คชื่อ</button>
+        <button style="background-color: #17a2b8;" onclick="alert('ระบบคะแนนกำลังพัฒนา')">📊 ดูคะแนน</button>
+      </div>
+    </div>
+
+    <script>
+      let userUid = "";
+
+      async function main() {
+        try {
+          await liff.init({ liffId: "2010046785-XmnNLcCN" });
+          
+          // 🛑 ล็อกประตู ป้องกัน Loop! ถ้าไม่ได้เปิดผ่านแอป LINE ให้หยุดทำงาน
+          if (!liff.isInClient()) {
+            document.getElementById("loading").innerText = "❌ กรุณาเปิดเมนูนี้จากแอป LINE เท่านั้นครับ";
+            document.getElementById("loading").style.color = "red";
+            return;
+          }
+
+          // ดึงรูปและชื่อมาโชว์เลย ไม่ต้องบังคับล็อกอินแล้ว
+          document.getElementById("loading").innerText = "กำลังดึงข้อมูลนักเรียน...";
+          const profile = await liff.getProfile();
+          userUid = profile.userId;
+          
+          document.getElementById("profileImage").src = profile.pictureUrl;
+          document.getElementById("profileImage").style.display = "block";
+          
+          // ส่งไปเช็คฐานข้อมูล
+          google.script.run
+            .withSuccessHandler(function(response) {
+              document.getElementById('loading').classList.add('hidden');
+              if (response.status === "registered") {
+                document.getElementById('welcomeText').innerText = "สวัสดี " + response.name;
+                document.getElementById('mainMenu').classList.remove('hidden');
+              } else {
+                document.getElementById('loginForm').classList.remove('hidden');
+              }
+            })
+            .checkUser(userUid);
+
+        } catch(err) {
+          document.getElementById("loading").innerText = "เกิดข้อผิดพลาด: " + err.message;
+        }
+      }
+
+      function register() {
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        if (!user || !pass) { alert("กรุณากรอกข้อมูลให้ครบ!"); return; }
+        
+        document.getElementById('loading').innerText = "กำลังบันทึกข้อมูล...";
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('loginForm').classList.add('hidden');
+        
+        google.script.run
+          .withSuccessHandler(function(res){
+            document.getElementById('loading').classList.add('hidden');
+            if (res.success) {
+              alert(res.message);
+              document.getElementById('welcomeText').innerText = "สวัสดี " + res.name;
+              document.getElementById('mainMenu').classList.remove('hidden');
+            } else {
+              alert(res.message);
+              document.getElementById('loginForm').classList.remove('hidden');
+            }
+          })
+          .registerUser(userUid, user, pass);
+      }
+
+      main();
+    </script>
+  </body>
+</html>
