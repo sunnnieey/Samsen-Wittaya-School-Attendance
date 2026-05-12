@@ -7,13 +7,18 @@
     <title>Samsen App</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family: 'Sarabun', sans-serif; text-align: center; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
-      .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); max-width: 350px; width: 100%; }
+      body { font-family: 'Sarabun', sans-serif; text-align: center; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; flex-direction: column;}
+      .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); max-width: 350px; width: 100%; position: relative;}
       .profile-pic { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #00c300; display: none; margin: 0 auto 15px auto; }
-      input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; }
+      input, select { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; font-family: 'Sarabun', sans-serif; }
       button { background-color: #00c300; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 10px; width: 100%; cursor: pointer; margin-top: 15px; font-weight: bold; }
+      .btn-teacher { background-color: #343a40; margin-top: 10px;}
+      .btn-teacher:hover { background-color: #23272b; }
       .hidden { display: none; }
       #loading { color: #ff9800; font-weight: bold; margin-bottom: 15px; }
+      .admin-link { margin-top: 20px; font-size: 12px; color: #aaa; text-decoration: underline; cursor: pointer; }
+      #qrDisplay { margin-top: 20px; }
+      #qrDisplay img { max-width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     </style>
   </head>
   <body>
@@ -22,6 +27,7 @@
       <h2>Samsen App 🏫</h2>
       <div id="loading">กำลังเชื่อมต่อระบบ...</div>
 
+      <!-- โหมดนักเรียน: ฟอร์มลงทะเบียน -->
       <div id="loginForm" class="hidden">
         <p>กรุณาลงทะเบียนครั้งแรก</p>
         <input type="number" id="username" placeholder="เลขที่ (เช่น 15)">
@@ -29,16 +35,35 @@
         <button onclick="register()">ลงทะเบียน</button>
       </div>
 
+      <!-- โหมดนักเรียน: เมนูหลัก -->
       <div id="mainMenu" class="hidden">
         <h3 id="welcomeText" style="color:#0056b3;"></h3>
         <p>ผูกบัญชีเรียบร้อยแล้ว</p>
-        <button style="background-color: #007bff;" onclick="alert('ระบบเช็คชื่อกำลังพัฒนา')">📷 สแกน QR เช็คชื่อ</button>
+        <button style="background-color: #007bff;" onclick="scanQR()">📷 สแกน QR เช็คชื่อ</button>
         <button style="background-color: #17a2b8;" onclick="alert('ระบบคะแนนกำลังพัฒนา')">📊 ดูคะแนน</button>
+      </div>
+
+      <!-- 👑 โหมดครูผู้สอน: แผงควบคุม (Teacher Dashboard) -->
+      <div id="teacherDashboard" class="hidden">
+        <h3 style="color:#343a40;">👨‍🏫 ระบบจัดการ (Teacher)</h3>
+        <p>เลือกคาบเรียนเพื่อสร้าง QR Code</p>
+        <select id="periodSelect">
+          <option value="คาบที่ 1">คาบที่ 1</option>
+          <option value="คาบที่ 2">คาบที่ 2</option>
+        </select>
+        <button class="btn-teacher" onclick="generateQR()">เสก QR Code เช็คชื่อ</button>
+        
+        <div id="qrDisplay"></div>
+        
+        <button style="background-color: #dc3545; margin-top: 20px;" onclick="exitTeacherMode()">🚪 ออกจากโหมดจัดการ</button>
       </div>
     </div>
 
+    <!-- ลิงก์ลับเข้าโหมดครู -->
+    <div class="admin-link" id="teacherLink" onclick="enterTeacherMode()">สำหรับครูผู้สอน (Teacher Login)</div>
+
     <script>
-      // ⚠️ สำคัญ: ใส่ URL จาก Google Apps Script ของคุณครูตรงนี้
+      // ⚠️ อย่าลืมใส่ URL ของคุณครูเหมือนเดิมนะครับ!
       const webAppUrl = 'https://script.google.com/macros/s/AKfycbxrCBkyGnSTsuXLCr0V3Pvi_sP9K-BeKrTyAl7nBTur_-lvMKAFIj1kkQdESrwY8DFS/exec'; 
       let userUid = "";
 
@@ -54,7 +79,6 @@
           document.getElementById("profileImage").src = profile.pictureUrl;
           document.getElementById("profileImage").style.display = "block";
           
-          // ใช้ fetch แทน google.script.run
           const res = await fetch(`${webAppUrl}?action=checkUser&uid=${userUid}`);
           const result = await res.json();
           
@@ -94,6 +118,67 @@
           alert("ลงทะเบียนไม่สำเร็จ: " + err.message);
         }
       }
+
+      async function scanQR() {
+        try {
+          const result = await liff.scanCodeV2();
+          if (result && result.value) {
+            const qrText = result.value; 
+            document.getElementById('loading').innerText = "กำลังบันทึกข้อมูล...";
+            document.getElementById('loading').classList.remove('hidden');
+            
+            const res = await fetch(`${webAppUrl}?action=checkIn&uid=${userUid}&qr=${encodeURIComponent(qrText)}`);
+            const data = await res.json();
+            
+            document.getElementById('loading').classList.add('hidden');
+            if (data.success) {
+              alert("✅ " + data.message);
+            } else {
+              alert("❌ " + data.message);
+            }
+          }
+        } catch (err) {
+          alert("ยกเลิกการสแกน หรือเกิดข้อผิดพลาด");
+          document.getElementById('loading').classList.add('hidden');
+        }
+      }
+
+      // 👑 ฟังก์ชันสำหรับโหมดครูผู้สอน
+      function enterTeacherMode() {
+        const pin = prompt("กรุณาใส่รหัสผ่านผู้ดูแลระบบ (พิมพ์: 9999):");
+        if (pin === "9999") { // รหัสผ่านตั้งเป็น 9999 (แก้ได้ครับ)
+          document.getElementById('loginForm').classList.add('hidden');
+          document.getElementById('mainMenu').classList.add('hidden');
+          document.getElementById('profileImage').classList.add('hidden');
+          document.getElementById('teacherLink').classList.add('hidden');
+          
+          document.getElementById('teacherDashboard').classList.remove('hidden');
+        } else if (pin !== null) {
+          alert("รหัสผ่านไม่ถูกต้อง!");
+        }
+      }
+
+      function exitTeacherMode() {
+        document.getElementById('teacherDashboard').classList.add('hidden');
+        document.getElementById('qrDisplay').innerHTML = ""; // ลบ QR ทิ้ง
+        // กลับไปโหลดหน้าแรกใหม่
+        document.getElementById('loading').classList.remove('hidden');
+        main();
+        document.getElementById('teacherLink').classList.remove('hidden');
+      }
+
+      function generateQR() {
+        const period = document.getElementById('periodSelect').value;
+        // ใช้ API สร้างรูป QR Code จากคำที่เลือก
+        const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" + encodeURIComponent(period);
+        
+        // แสดงรูป QR Code บนหน้าจอแอปเลย
+        document.getElementById('qrDisplay').innerHTML = `
+          <p style="margin-top:15px; font-weight:bold; color:#00c300;">พร้อมสแกนสำหรับ: ${period}</p>
+          <img src="${qrUrl}" alt="QR Code">
+        `;
+      }
+
       main();
     </script>
   </body>
